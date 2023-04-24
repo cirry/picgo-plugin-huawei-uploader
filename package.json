@@ -1,12 +1,12 @@
 {
-  "name": "picgo-plugin-huawei-uploader",
-  "version": "1.0.8",
-  "description": "华为云对象存储图床",
+  "name": "picgo-plugin-huawei-obs-upload",
+  "version": "1.0.1",
+  "description": "华为云对象存储",
   "main": "dist/index.js",
   "publishConfig": {
     "access": "public"
   },
-  "homepage": "https://github.com/YunfengGao/picgo-plugin-huawei-uploader",
+  "homepage": "https://github.com/cirry/picgo-plugin-huawei-uploader",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc -p .",
@@ -26,7 +26,7 @@
     "hua",
     "obs"
   ],
-  "author": "gaoyunfeng",
+  "author": "cirry",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^10.17.59",

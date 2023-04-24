@@ -1,8 +1,8 @@
 import picgo from 'picgo'
-import { PluginConfig } from 'picgo/dist/utils/interfaces'
+import { IPluginConfig } from 'picgo/dist/utils/interfaces'
 import crypto from 'crypto'
 const mime_types = require("mime")
-
+import { getDatePath } from "./helper";
 const generateSignature = (options: any, fileName: string): string => {
   const date = new Date().toUTCString()
   const mimeType = mime_types.getType(fileName)
@@ -10,7 +10,7 @@ const generateSignature = (options: any, fileName: string): string => {
     throw Error(`No mime type found for file ${fileName}`)
   }
   const path = options.path
-  const strToSign = `PUT\n\n${mimeType}\n${date}\n/${options.bucketName}${path ? '/' + encodeURI(options.path) : ''}/${encodeURI(fileName)}`
+  const strToSign = `PUT\n\n${mimeType}\n${date}\n/${options.bucketName}${path ? '/' + encodeURI(options.path) : ''}${getDatePath(options.isAutoArchive)}/${encodeURI(fileName)}`
   const signature = crypto.createHmac('sha1', options.accessKeySecret).update(strToSign).digest('base64')
   return `OBS ${options.accessKeyId}:${signature}`
 }
@@ -20,7 +20,7 @@ const postOptions = (options: any, fileName: string, signature: string, image: B
   const mimeType = mime_types.getType(fileName)
   return {
     method: 'PUT',
-    url: `https://${options.bucketName}.${options.endpoint}${path ? '/' + encodeURI(options.path) : ''}/${encodeURI(fileName)}`,
+    url: `https://${options.bucketName}.${options.endpoint}${path ? '/' + encodeURI(options.path) : ''}${getDatePath(options.isAutoArchive)}/${encodeURI(fileName)}`,
     headers: {
       Authorization: signature,
       Date: new Date().toUTCString(),
@@ -31,8 +31,8 @@ const postOptions = (options: any, fileName: string, signature: string, image: B
   }
 }
 
-const handle = async (ctx: picgo): Promise<picgo> => {
-  const obsOptions = ctx.getConfig<config>('picBed.huaweicloud-uploader')
+const handle = async (ctx) => {
+  const obsOptions = ctx.getConfig('picBed.huawei-obs-upload')
   if (!obsOptions) {
     throw new Error('找不到华为OBS图床配置文件')
   }
@@ -52,7 +52,8 @@ const handle = async (ctx: picgo): Promise<picgo> => {
           delete img.buffer
           const path = obsOptions.path
           const domain = obsOptions.customDomain ? obsOptions.customDomain : `https://${obsOptions.bucketName}.${obsOptions.endpoint}`
-          img.imgUrl = `${domain}${path ? '/' + path : ''}/${img.fileName}`
+          img.url = img.imgUrl = `${domain}${path ? '/' + path : ''}${getDatePath(obsOptions.isAutoArchive)}/${img.fileName}`
+
           if (obsOptions.imageProcess) {
             img.imgUrl += obsOptions.imageProcess
           }
@@ -69,8 +70,8 @@ const handle = async (ctx: picgo): Promise<picgo> => {
   }
 }
 
-const config = (ctx: picgo): PluginConfig[] => {
-  const userConfig = ctx.getConfig<config>('picBed.huaweicloud-uploader') ||
+const config = (ctx): IPluginConfig[] => {
+  const userConfig = ctx.getConfig('picBed.huawei-obs-upload') ||
   {
     accessKeyId: '',
     accessKeySecret: '',
@@ -78,7 +79,8 @@ const config = (ctx: picgo): PluginConfig[] => {
     endpoint: '',
     path: '',
     imageProcess: '',
-    customDomain: ''
+    customDomain: '',
+    isAutoArchive: '',
   }
   return [
     {
@@ -136,20 +138,28 @@ const config = (ctx: picgo): PluginConfig[] => {
       message: '例如https://mydomain.com',
       default: userConfig.customDomain || '',
       required: false
+    },
+    {
+      name: 'isAutoArchive',
+      type: 'confirm',
+      default: userConfig.isAutoArchive || false,
+      required: false,
+      message: '将上传文件存放到当天日期的目录下',
+      alias: '自动归档'
     }
   ]
 }
 
-export = (ctx: picgo) => {
+export = (ctx) => {
   const register = () => {
-    ctx.helper.uploader.register('huaweicloud-uploader', {
+    ctx.helper.uploader.register('huawei-obs-upload', {
       handle,
       name: '华为云OBS',
       config: config
     })
   }
   return {
-    uploader: 'huaweicloud-uploader',
+    uploader: 'huawei-obs-upload',
     register
   }
 }
